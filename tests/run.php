@@ -1,0 +1,4 @@
+<?php
+declare(strict_types=1);
+use Pam\Native\ThreeD\Scene3D;use Pam\Native\ThreeD\SceneAsset;use Pam\Native\ThreeD\SceneControlMode;use Pam\Native\ThreeD\SceneEventKind;use Pam\Native\UI\CustomView;
+require dirname(__DIR__).'/vendor/autoload.php';function expect(bool$c,string$m):void{if(!$c)throw new RuntimeException($m);}expect(array_column(SceneControlMode::cases(),'value')===range(1,2),'Control modes changed.');expect(array_column(SceneEventKind::cases(),'value')===range(1,4),'Events changed.');$asset=new SceneAsset('models/robot.glb','models/robot.usdz');expect(Scene3D::make($asset)->toElement()::class===CustomView::class,'3D scene is not native.');try{new SceneAsset('../robot.glb','robot.usdz');throw new RuntimeException('Escaping asset accepted.');}catch(InvalidArgumentException){}echo "PAM Native 3D contracts passed.\n";
