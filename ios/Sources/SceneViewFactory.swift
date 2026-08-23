@@ -9,7 +9,22 @@ private final class PamSceneView:ARView,@unchecked Sendable{
  @MainActor @preconcurrency required dynamic init(frame frameRect:CGRect){emitter={_ in};super.init(frame:frameRect,cameraMode:.nonAR,automaticallyConfigureSession:false);environment.background = .color(.black)}
  @MainActor @preconcurrency required dynamic init?(coder:NSCoder){nil}
  func update(_ values:[String:WireValue]){if case let.text(hex)?=values["background"]{environment.background = .color(color(hex))};guard case let.integer(next)?=values["revision"],next != revision,case let.text(json)?=values["asset"],let data=json.data(using:.utf8),let asset=try?JSONSerialization.jsonObject(with:data)as?[String:Any]else{return};revision=next;do{try load(asset,controls:values.integer("controls",2))}catch{send(4,error.localizedDescription)}}
- private func load(_ value:[String:Any],controls:Int64)throws{guard let path=value["iosUsdz"]as?String else{throw SceneError.invalidAsset};let url=try file(path);scene.anchors.removeAll();let entity=try Entity.load(contentsOf:url);let scale=Float(value["scale"]as?Double ?? 1);entity.scale=SIMD3(repeating:scale);entity.position=SIMD3(Float(value["x"]as?Double ?? 0),Float(value["y"]as?Double ?? 0),Float(value["z"]as?Double ?? 0));let anchor=AnchorEntity(world:.zero);anchor.addChild(entity);scene.addAnchor(anchor);installedGestures.forEach(removeGestureRecognizer);installedGestures=[];if controls==2{entity.generateCollisionShapes(recursive:true);installedGestures=installGestures([.rotation,.scale,.translation],for:entity)};let index=value["animation"]as?Int ?? 0;if entity.availableAnimations.indices.contains(index){entity.playAnimation(entity.availableAnimations[index].repeat())};send(2)}
+ private func load(_ value:[String:Any],controls:Int64)throws{
+  guard let path=value["iosUsdz"]as?String else{throw SceneError.invalidAsset}
+  let url=try file(path);scene.anchors.removeAll()
+  let entity=try Entity.load(contentsOf:url)
+  let container=ModelEntity()
+  container.addChild(entity)
+  let scale=Float(value["scale"]as?Double ?? 1)
+  container.scale=SIMD3(repeating:scale)
+  container.position=SIMD3(Float(value["x"]as?Double ?? 0),Float(value["y"]as?Double ?? 0),Float(value["z"]as?Double ?? 0))
+  let anchor=AnchorEntity(world:.zero);anchor.addChild(container);scene.addAnchor(anchor)
+  installedGestures.forEach(removeGestureRecognizer);installedGestures=[]
+  if controls==2{container.generateCollisionShapes(recursive:true);installedGestures=installGestures([.rotation,.scale,.translation],for:container)}
+  let index=value["animation"]as?Int ?? 0
+  if entity.availableAnimations.indices.contains(index){entity.playAnimation(entity.availableAnimations[index].repeat())}
+  send(2)
+ }
  private func file(_ path:String)throws->URL{let target=root.appendingPathComponent(path).standardizedFileURL;guard target.path.hasPrefix(root.path+"/"),FileManager.default.fileExists(atPath:target.path)else{throw SceneError.invalidAsset};return target}
  func releaseScene(){scene.anchors.removeAll();installedGestures.forEach(removeGestureRecognizer);installedGestures=[]}
  private func send(_ event:Int64,_ message:String=""){if let data=try?WireMap.encode(["event":.integer(event),"message":.text(message)]){emitter(data)}}
